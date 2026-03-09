@@ -1,0 +1,16 @@
+{
+  "name": "firefoxnetworktabtesting",
+  "version": "1.0.0",
+  "main": "fetch_network_firefox.js",
+  "scripts": {
+    "start": "node fetch_network_firefox.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "@types/node": "^25.3.3"
+  }
+}
