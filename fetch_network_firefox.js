@@ -6,6 +6,7 @@ const path = require('path');
 
 const outDir = path.join(__dirname, 'test-results', 'nested'); // folder inside project
 if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
+const aggregatedJsonPath = path.join(outDir, 'network_log.json');
 
 (async () => {
   const browser = await firefox.launch({ headless: false }); // headful can help with auth flows
@@ -54,16 +55,7 @@ if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
       entry.endTime = Date.now();
       requests.set(request, entry);
 
-      // Example: write each response body to disk (optional)
-      const safeName = entry.id.toString().replace(/[:\/?#&= ]/g, '_').slice(0, 200);
-      const filename = path.join(outDir, `response_${safeName}.txt`);
-      if (entry.responseBodyIsBase64) {
-        fs.writeFileSync(filename + '.b64', entry.responseBody);
-      } else {
-        fs.writeFileSync(filename, entry.responseBody || '');
-      }
-
-      console.log(`RESPONSE <- ${response.status()} ${response.url()} -> saved ${filename}`);
+      console.log(`RESPONSE <- ${response.status()} ${response.url()}`);
     } catch (err) {
       console.warn('Error handling response:', err);
     }
@@ -75,16 +67,34 @@ if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
   });
 
   // Navigate to a page (change to your target)
-  await page.goto('https://example.com', { waitUntil: 'networkidle' });
+  await page.goto('https://bgaming.com/games/classic-multihand-blackjack', { waitUntil: 'networkidle' });
 
   // Wait or interact as needed so background requests occur
-  await page.waitForTimeout(3000);
+  await page.waitForTimeout(100000);
 
   // Inspect collected requests
   for (const [req, info] of requests.entries()) {
     console.log('---');
     console.log(info.method, info.url, info.status || 'pending', info.responseBody ? `${info.responseBody.slice(0,120)}...` : '');
   }
+
+  // Persist entire network trace to a single JSON file.
+  const serializedRequests = Array.from(requests.values()).map(entry => ({
+    id: entry.id,
+    url: entry.url,
+    method: entry.method,
+    headers: entry.headers,
+    postData: entry.postData,
+    startTime: entry.startTime,
+    status: entry.status,
+    statusText: entry.statusText,
+    responseHeaders: entry.responseHeaders,
+    responseBodyIsBase64: entry.responseBodyIsBase64,
+    responseBody: entry.responseBody,
+    endTime: entry.endTime
+  }));
+  fs.writeFileSync(aggregatedJsonPath, JSON.stringify(serializedRequests, null, 2));
+  console.log(`Saved network log to ${aggregatedJsonPath}`);
 
   await browser.close();
 })();
